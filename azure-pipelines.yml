@@ -1,0 +1,45 @@
+trigger:
+  - master
+
+stages:
+  - stage: QA
+    pool:
+      vmImage: "windows-latest"
+    jobs:
+      - job: analyze_test
+        displayName: "Analyze & Test"
+        steps:
+          - task: PowerShell@2
+            displayName: "Run PSScriptAnalyzer"
+            inputs:
+              targetType: "inline"
+              script: '.\build.ps1 -Analyze'
+          - task: PowerShell@2
+            displayName: "Run Pester"
+            inputs:
+              targetType: "inline"
+              script: '.\build.ps1 -Test'
+
+  - stage: Build
+    pool:
+      vmImage: "windows-latest"
+    jobs:
+      - job: compile
+        displayName: "Compile module PsOauth2"
+        steps:
+          - task: PowerShell@2
+            displayName: "Compile Module"
+            inputs:
+              targetType: "inline"
+              script: '.\build.ps1 -Compile'
+          - task: PowerShell@2
+            displayName: "Run Pester"
+            inputs:
+              targetType: "inline"
+              script: '.\build.ps1 -Test'
+          - task: PublishTestResults@2
+            inputs:
+              testResultsFormat: "NUnit"
+              testResultsFiles: "**/TestResults.xml"
+          - publish: PsOauth2
+            artifact: PsOauth2
