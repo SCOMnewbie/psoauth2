@@ -34,75 +34,6 @@ class TokenUnusableException : System.Exception {
     }
 }
 
-function ConvertFrom-Jwt {
-
-    <#
-    Big thank you to both Darren Robinson (https://github.com/darrenjrobinson/JWTDetails/blob/master/JWTDetails/1.0.0/JWTDetails.psm1) and
-    Mehrdad Mirreza in the comment of the blog post (https://www.michev.info/Blog/Post/2140/decode-jwt-access-and-id-tokens-via-powershell)
-    I've used both article for inspiration because:
-    Darren does not have header wich is a mandatory peace according to me and Mehrdad does not have signature which is also a mandatory piece.
-    #>
-    [cmdletbinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Token
-    )
-
-    Write-Verbose 'ConvertFrom-Jwt - Begin function'
-
-    $ErrorActionPreference = 'Stop'
-
-    try {
-
-        # Validate as per https://tools.ietf.org/html/rfc7519
-        # Access and ID tokens are fine, Refresh tokens will not work
-        if (!$Token.Contains('.') -or !$Token.StartsWith('eyJ')) { Write-Error 'Invalid token' -ErrorAction Stop }
-
-        # Extract header and payload
-        $tokenheader, $tokenPayload, $tokensignature = $Token.Split('.').Replace('-', '+').Replace('_', '/')[0..2]
-
-        # Fix padding as needed, keep adding '=' until string length modulus 4 reaches 0
-        while ($tokenheader.Length % 4) { Write-Debug 'Invalid length for a Base-64 char array or string, adding ='; $tokenheader += '=' }
-        while ($tokenPayload.Length % 4) { Write-Debug 'Invalid length for a Base-64 char array or string, adding ='; $tokenPayload += '=' }
-        while ($tokenSignature.Length % 4) { Write-Debug 'Invalid length for a Base-64 char array or string, adding ='; $tokenSignature += '=' }
-
-        Write-Verbose "ConvertFrom-Jwt - Base64 encoded (padded) header:`n$tokenheader"
-        Write-Verbose "ConvertFrom-Jwt - Base64 encoded (padded) payoad:`n$tokenPayload"
-        Write-Verbose "ConvertFrom-Jwt - Base64 encoded (padded) payoad:`n$tokenSignature"
-
-        # Convert header from Base64 encoded string to PSObject all at once
-        $header = [System.Text.Encoding]::ASCII.GetString([system.convert]::FromBase64String($tokenheader)) | ConvertFrom-Json
-
-        # Convert payload to string array
-        $tokenArray = [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($tokenPayload))
-
-        # Convert from JSON to PSObject
-        $tokobj = $tokenArray | ConvertFrom-Json
-
-        # Convert Expiry time to PowerShell DateTime
-        $orig = (Get-Date -Year 1970 -Month 1 -Day 1 -hour 0 -Minute 0 -Second 0 -Millisecond 0)
-        $timeZone = Get-TimeZone
-        $utcTime = $orig.AddSeconds($tokobj.exp)
-        $hoursOffset = $timeZone.GetUtcOffset($(Get-Date)).hours #Daylight saving needs to be calculated
-        $localTime = $utcTime.AddHours($hoursOffset)     # Return local time,
-
-        # Time to Expiry
-        $timeToExpiry = ($localTime - (get-date))
-
-        Write-Verbose 'ConvertFrom-Jwt - End function'
-        [pscustomobject]@{
-            Tokenheader         = $header
-            TokenPayload        = $tokobj
-            TokenSignature      = $tokenSignature
-            TokenExpiryDateTime = $localTime
-            TokentimeToExpiry   = $timeToExpiry
-        }
-    }
-    catch {
-        New-CustomExceptionGenerator -TokenUnusable
-    }
-}
-
 function Find-AzureX5c {
     [CmdletBinding()]
     param(
@@ -1050,6 +981,75 @@ Function Clear-TokenCache {
     }
 }
 
+function ConvertFrom-Jwt {
+
+    <#
+    Big thank you to both Darren Robinson (https://github.com/darrenjrobinson/JWTDetails/blob/master/JWTDetails/1.0.0/JWTDetails.psm1) and
+    Mehrdad Mirreza in the comment of the blog post (https://www.michev.info/Blog/Post/2140/decode-jwt-access-and-id-tokens-via-powershell)
+    I've used both article for inspiration because:
+    Darren does not have header wich is a mandatory peace according to me and Mehrdad does not have signature which is also a mandatory piece.
+    #>
+    [cmdletbinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Token
+    )
+
+    Write-Verbose 'ConvertFrom-Jwt - Begin function'
+
+    $ErrorActionPreference = 'Stop'
+
+    try {
+
+        # Validate as per https://tools.ietf.org/html/rfc7519
+        # Access and ID tokens are fine, Refresh tokens will not work
+        if (!$Token.Contains('.') -or !$Token.StartsWith('eyJ')) { Write-Error 'Invalid token' -ErrorAction Stop }
+
+        # Extract header and payload
+        $tokenheader, $tokenPayload, $tokensignature = $Token.Split('.').Replace('-', '+').Replace('_', '/')[0..2]
+
+        # Fix padding as needed, keep adding '=' until string length modulus 4 reaches 0
+        while ($tokenheader.Length % 4) { Write-Debug 'Invalid length for a Base-64 char array or string, adding ='; $tokenheader += '=' }
+        while ($tokenPayload.Length % 4) { Write-Debug 'Invalid length for a Base-64 char array or string, adding ='; $tokenPayload += '=' }
+        while ($tokenSignature.Length % 4) { Write-Debug 'Invalid length for a Base-64 char array or string, adding ='; $tokenSignature += '=' }
+
+        Write-Verbose "ConvertFrom-Jwt - Base64 encoded (padded) header:`n$tokenheader"
+        Write-Verbose "ConvertFrom-Jwt - Base64 encoded (padded) payoad:`n$tokenPayload"
+        Write-Verbose "ConvertFrom-Jwt - Base64 encoded (padded) payoad:`n$tokenSignature"
+
+        # Convert header from Base64 encoded string to PSObject all at once
+        $header = [System.Text.Encoding]::ASCII.GetString([system.convert]::FromBase64String($tokenheader)) | ConvertFrom-Json
+
+        # Convert payload to string array
+        $tokenArray = [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($tokenPayload))
+
+        # Convert from JSON to PSObject
+        $tokobj = $tokenArray | ConvertFrom-Json
+
+        # Convert Expiry time to PowerShell DateTime
+        $orig = (Get-Date -Year 1970 -Month 1 -Day 1 -hour 0 -Minute 0 -Second 0 -Millisecond 0)
+        $timeZone = Get-TimeZone
+        $utcTime = $orig.AddSeconds($tokobj.exp)
+        $hoursOffset = $timeZone.GetUtcOffset($(Get-Date)).hours #Daylight saving needs to be calculated
+        $localTime = $utcTime.AddHours($hoursOffset)     # Return local time,
+
+        # Time to Expiry
+        $timeToExpiry = ($localTime - (get-date))
+
+        Write-Verbose 'ConvertFrom-Jwt - End function'
+        [pscustomobject]@{
+            Tokenheader         = $header
+            TokenPayload        = $tokobj
+            TokenSignature      = $tokenSignature
+            TokenExpiryDateTime = $localTime
+            TokentimeToExpiry   = $timeToExpiry
+        }
+    }
+    catch {
+        New-CustomExceptionGenerator -TokenUnusable
+    }
+}
+
 Function New-AccessToken {
     <#
         .SYNOPSIS
@@ -1531,6 +1531,168 @@ Function New-AccessToken {
     }
 }
 
+
+<#
+A Big thank you to Alex Asplund (https://adamtheautomator.com/powershell-graph-api/) who did the hardwork regarding certificate auth. I've copy/paste all his work.
+#>
+function New-AzureFunctionClientCredential {
+    [cmdletbinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [guid]$ClientId,
+        [Parameter(Mandatory = $true)]
+        [guid]$TenantId,
+        [Parameter(Mandatory = $true)]
+        [string]$Scope,
+        [parameter(Mandatory = $true, ParameterSetName = 'Secret')]
+        [string]$Secret,
+        [parameter(Mandatory = $true, ParameterSetName = 'Certificate')]
+        [ValidateScript( {
+                if ( -Not ($_ | Test-Path) ) {
+                    throw 'Certificate does not exist'
+                }
+                return $true
+            })]
+        $CertificatePath  # Should be under the form "Cert:\CurrentUser\My\<cert thumbprint>"
+    )
+
+    Write-Verbose 'New-ClientCredential - Begin function'
+
+    # Force TLS 1.2.
+    Write-Verbose 'New-ClientCredential - Force TLS 1.2'
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+    if ($CertificatePath) {
+        Write-Verbose 'New-ClientCredential - Certificate has been specified'
+        $Certificate = Get-Item $CertificatePath
+        # Create base64 hash of certificate
+        $CertificateBase64Hash = [System.Convert]::ToBase64String($Certificate.GetCertHash())
+
+        Write-Verbose 'New-ClientCredential - Build our custom JWT'
+        # https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-certificate-credentials
+
+        # Create JWT timestamp for expiration
+        $StartDate = (Get-Date '1970-01-01T00:00:00Z' ).ToUniversalTime()
+        $JWTExpirationTimeSpan = (New-TimeSpan -Start $StartDate -End (Get-Date).ToUniversalTime().AddMinutes(5)).TotalSeconds
+        $JWTExpiration = [math]::Round($JWTExpirationTimeSpan,0)
+
+        # Create JWT validity start timestamp
+        $NotBeforeExpirationTimeSpan = (New-TimeSpan -Start $StartDate -End ((Get-Date).ToUniversalTime())).TotalSeconds
+        $NotBefore = [math]::Round($NotBeforeExpirationTimeSpan,0)
+
+        # Create JWT header
+        $JWTHeader = @{
+            alg = 'RS256'
+            typ = 'JWT'
+            # Use the CertificateBase64Hash and replace/strip to match web encoding of base64
+            x5t = $CertificateBase64Hash -replace '\+','-' -replace '/','_' -replace '='
+        }
+
+        # Create JWT payload
+        $JWTPayLoad = @{
+            # What endpoint is allowed to use this JWT
+            aud = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+
+            # Expiration timestamp
+            exp = $JWTExpiration
+
+            # Issuer = your application
+            iss = $ClientId
+
+            # JWT ID: random guid
+            jti = [guid]::NewGuid()
+
+            # Not to be used before
+            nbf = $NotBefore
+
+            # JWT Subject
+            sub = $ClientId
+        }
+
+        # Convert header and payload to base64
+        $JWTHeaderToByte = [System.Text.Encoding]::UTF8.GetBytes(($JWTHeader | ConvertTo-Json))
+        $EncodedHeader = [System.Convert]::ToBase64String($JWTHeaderToByte)
+
+        $JWTPayLoadToByte = [System.Text.Encoding]::UTF8.GetBytes(($JWTPayload | ConvertTo-Json))
+        $EncodedPayload = [System.Convert]::ToBase64String($JWTPayLoadToByte)
+
+        # Join header and Payload with "." to create a valid (unsigned) JWT
+        $null = $CustomJWT
+        $CustomJWT = $EncodedHeader + '.' + $EncodedPayload
+
+        # Get the private key object of your certificate
+        $PrivateKey = $Certificate.PrivateKey
+
+        # Define RSA signature and hashing algorithm
+        $RSAPadding = [Security.Cryptography.RSASignaturePadding]::Pkcs1
+        $HashAlgorithm = [Security.Cryptography.HashAlgorithmName]::SHA256
+
+        Write-Verbose 'New-ClientCredential - Sign our custom JWT'
+        # Create a signature of the JWT
+        $Signature = [Convert]::ToBase64String(
+            $PrivateKey.SignData([System.Text.Encoding]::UTF8.GetBytes($CustomJWT),$HashAlgorithm,$RSAPadding)
+        ) -replace '\+','-' -replace '/','_' -replace '='
+
+        # Join the signature to the JWT with "."
+        $CustomJWT = $CustomJWT + '.' + $Signature
+
+    }
+    else{
+        Write-Verbose 'New-ClientCredential - Secret has been specified'
+    }
+
+    Write-Verbose 'New-ClientCredential - Define headers'
+    if($CustomJWT){
+        $headers = @{
+            'Content-Type' = 'application/x-www-form-urlencoded'
+            Authorization = "Bearer $CustomJWT"
+        }
+    }
+    else{
+        $headers = @{
+            'Content-Type' = 'application/x-www-form-urlencoded'
+        }
+    }
+    
+
+    #Let hit the token endpoint for this second call
+    Write-Verbose "New-ClientCredential - Contact Url https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+    $Params = @{
+        Headers = $headers
+        uri     = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+        Body    = $null
+        method  = 'Post'
+    }
+
+    if($CertificatePath){
+        Write-Verbose 'New-ClientCredential - Generate body with certificate'
+        $BodyPayload = @{
+            client_id = $Clientid
+            client_assertion = $CustomJWT
+            client_assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+            scope = $Scope
+            grant_type = "client_credentials"
+        
+        }
+    }
+    else{
+        Write-Verbose 'New-ClientCredential - Generate body with secret'
+
+        $BodyPayload = @{
+            grant_type    = 'client_credentials'
+            client_id     = $Clientid
+            scope         = $Scope
+            client_secret = $Secret
+        }
+    }
+    
+    $Params.Body = $BodyPayload
+
+    Write-Verbose 'New-ClientCredential - End function'
+
+    (Invoke-RestMethod @Params).access_token
+}
+
 <#
 .SYNOPSIS
 This function will revoke all refresh tokens of a specific users. According to MS docs, it can take several minutes to revoke all tokens.
@@ -1645,8 +1807,7 @@ function Test-AADToken {
         [Parameter(Mandatory = $true)][String]$AccessToken,
         [Parameter(Mandatory = $true)][String]$Aud,
         [Parameter(Mandatory = $true)][String]$azp,
-        [String]$ver = '2.0',
-        [int]$azpacr = 0
+        [String]$ver = '2.0'
     )
 
     begin{
@@ -1657,6 +1818,11 @@ function Test-AADToken {
         try{
             #Create an object from the Token received
             $DecodedToken = ConvertFrom-Jwt -Token $AccessToken
+            #$CurrentDate = get-date -AsUTC  >> 7.1
+            $CurrentDate = (get-date).ToUniversalTime()
+            $iat = (Get-Date 01.01.1970)+([System.TimeSpan]::fromseconds($DecodedToken.TokenPayload.iat))
+            $nbf = (Get-Date 01.01.1970)+([System.TimeSpan]::fromseconds($DecodedToken.TokenPayload.nbf))
+            $exp = (Get-Date 01.01.1970)+([System.TimeSpan]::fromseconds($DecodedToken.TokenPayload.exp))
     
             #Get the public key used to encrypt (multiple available and rotate from time to time)
             $x5c = Find-AzureX5c -Kid $($Decodedtoken.Tokenheader.kid)
@@ -1668,24 +1834,29 @@ function Test-AADToken {
             $null = Test-JwtSignature -jwt $AccessToken -Cert $cert
     
             #Is Token expired?
-            if ($Decodedtoken.TokentimeToExpiry -lt 0) {
+            if ((New-TimeSpan -Start $CurrentDate -End $exp).TotalSeconds -lt 0) {
                 New-CustomExceptionGenerator -TokenExpired
+            }
+
+            if ((New-TimeSpan -Start $CurrentDate -End $iat).TotalSeconds -gt 0) {
+                New-CustomExceptionGenerator -$TokenUnusable
+            }
+
+            if ((New-TimeSpan -Start $CurrentDate -End $nbf).TotalSeconds -gt 0) {
+                New-CustomExceptionGenerator -$TokenUnusable
+            }
+
+            # ver before aud because we will check only the id, not the uniqueURI
+            if ($Decodedtoken.TokenPayload.ver -ne $ver) {
+                New-CustomExceptionGenerator -VersionValidationFailed
             }
     
             if ($Decodedtoken.TokenPayload.aud -ne $Aud) {
                 New-CustomExceptionGenerator -AudienceValidationFailed
             }
 
-            if ($Decodedtoken.TokenPayload.azpacr -ne $azpacr) {
-                New-CustomExceptionGenerator -AzpacrValidationFailed
-            }
-
             if ($Decodedtoken.TokenPayload.azp -ne $azp) {
                 New-CustomExceptionGenerator -AzpValidationFailed
-            }
-
-            if ($Decodedtoken.TokenPayload.ver -ne $ver) {
-                New-CustomExceptionGenerator -VersionValidationFailed
             }
         }
         catch [TokenUnusableException]{
@@ -1699,4 +1870,4 @@ function Test-AADToken {
     }
 }
 
-Export-ModuleMember -Function 'Clear-TokenCache', 'New-AccessToken', 'Revoke-RefreshTokens', 'Test-AADToken'
+Export-ModuleMember -Function 'Clear-TokenCache', 'ConvertFrom-Jwt', 'New-AccessToken', 'New-AzureFunctionClientCredential', 'Revoke-RefreshTokens', 'Test-AADToken'

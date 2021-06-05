@@ -273,7 +273,7 @@ Invoke-RestMethod -Method get -Headers $Headers -Uri "https://graph.microsoft.co
 # Now for the final part, I will try to connect with another global admin account wich is not assigned the to service principal (Enterprise app).
 
 $Splatting = @{
-    Resource     =  "1172bdc7-15c5-4f03-b922-2b912ea67898" #$AppRegistration.AppId
+    Resource     = $AppRegistration.AppId
     TenantId     = $TenantId
     Scope        = 'https://graph.microsoft.com/UserAuthenticationMethod.ReadWrite.All' # Now we use delegated, .default can work but now it's not mandatory compare to client credential.
     RedirectUri  = 'https://login.microsoftonline.com/common/oauth2/nativeclient' # RedirectURI defined on the app

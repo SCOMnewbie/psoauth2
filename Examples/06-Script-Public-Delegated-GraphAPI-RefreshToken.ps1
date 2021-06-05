@@ -38,7 +38,7 @@
 
 #>
 
-#throw "don't press F5"
+throw "don't press F5"
 
 #Use the previously created module
 Import-Module 'C:\Git\Private\psoauth2\Examples\PSAADApplication.psd1'

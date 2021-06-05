@@ -36,7 +36,7 @@ $SubscriptionId = [Environment]::GetEnvironmentVariable('LabSubscriptionId')
 #Define our app registration with only one permission "UserAuthenticationMethod.ReadWrite.All". 
 # Like I see from time to time, don't add openId scope, this flow client credential flow does not generate Refresh tokens.
 $Settings = @{
-    displayName = "DemoManageUsersAuthMethods01"
+    displayName = "DemoCallGraph"
     publicClient = @{
         redirectUris= @(
             "https://login.microsoftonline.com/common/oauth2/nativeclient"  # Array here can have multiple values
@@ -76,13 +76,14 @@ $UserObjectId = '39291a8b-0723-4468-9305-71dc3d542ddc'
 
 #Generate an Access Token
 $Splatting = @{
-    Resource     = $AppRegistration.AppId
+    Resource     = "0de45c8d-9a7a-4548-acbb-1b9d64889186"
     TenantId     = $TenantId
-    Scope        = 'https://graph.microsoft.com/.default' # Here we have to specify default because no user interraction and client credential. So all scopes have to be admin consented for this app. Finaly we're running it in application mode.
+    Scope        = 'https://graph.microsoft.com/User.ManageIdentities.All' # Here we have to specify default because no user interraction and client credential. So all scopes have to be admin consented for this app. Finaly we're running it in application mode.
     RedirectUri       = 'https://login.microsoftonline.com/common/oauth2/nativeclient' # RedirectURI defined on the app
-    ClientCredentialFlow = $true
-    Secret = $AppRegistrationCreds.secretText
-    verbose      = $true 
+    AuthCodeFlow = $true
+    prompt = 'select_account'
+    WithoutCache = $true
+    verbose      = $true
 }
 
 $AccessToken = New-AccessToken @Splatting 

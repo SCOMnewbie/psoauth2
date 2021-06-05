@@ -3,7 +3,7 @@
     This is the most basic type of access (more or less what you will see on internet when you want to run a script). An RBAC account you create to give access to something in your Azure tenant. It can be an account for your AzDo pipeline, 
     to give permission to something in your Azure subscription, to have an account to upload files on your storage account, ...
     We will rely on the Powershell module (and so MSAL) to authenticate.
-    We will use the client_flow credential through the connect-azaccount cmdlet but for now, we are talking about a "dummy" RBAC without
+    We will use the client credential flow credential through the connect-azaccount cmdlet but for now, we are talking about a "dummy" RBAC account without
     any permission on graph or any other backend api.
 
     pros:

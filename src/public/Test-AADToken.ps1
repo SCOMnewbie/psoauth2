@@ -32,8 +32,7 @@
         [Parameter(Mandatory = $true)][String]$AccessToken,
         [Parameter(Mandatory = $true)][String]$Aud,
         [Parameter(Mandatory = $true)][String]$azp,
-        [String]$ver = '2.0',
-        [int]$azpacr = 0
+        [String]$ver = '2.0'
     )
 
     begin{
@@ -44,6 +43,11 @@
         try{
             #Create an object from the Token received
             $DecodedToken = ConvertFrom-Jwt -Token $AccessToken
+            #$CurrentDate = get-date -AsUTC  >> 7.1
+            $CurrentDate = (get-date).ToUniversalTime()
+            $iat = (Get-Date 01.01.1970)+([System.TimeSpan]::fromseconds($DecodedToken.TokenPayload.iat))
+            $nbf = (Get-Date 01.01.1970)+([System.TimeSpan]::fromseconds($DecodedToken.TokenPayload.nbf))
+            $exp = (Get-Date 01.01.1970)+([System.TimeSpan]::fromseconds($DecodedToken.TokenPayload.exp))
     
             #Get the public key used to encrypt (multiple available and rotate from time to time)
             $x5c = Find-AzureX5c -Kid $($Decodedtoken.Tokenheader.kid)
@@ -55,24 +59,29 @@
             $null = Test-JwtSignature -jwt $AccessToken -Cert $cert
     
             #Is Token expired?
-            if ($Decodedtoken.TokentimeToExpiry -lt 0) {
+            if ((New-TimeSpan -Start $CurrentDate -End $exp).TotalSeconds -lt 0) {
                 New-CustomExceptionGenerator -TokenExpired
+            }
+
+            if ((New-TimeSpan -Start $CurrentDate -End $iat).TotalSeconds -gt 0) {
+                New-CustomExceptionGenerator -$TokenUnusable
+            }
+
+            if ((New-TimeSpan -Start $CurrentDate -End $nbf).TotalSeconds -gt 0) {
+                New-CustomExceptionGenerator -$TokenUnusable
+            }
+
+            # ver before aud because we will check only the id, not the uniqueURI
+            if ($Decodedtoken.TokenPayload.ver -ne $ver) {
+                New-CustomExceptionGenerator -VersionValidationFailed
             }
     
             if ($Decodedtoken.TokenPayload.aud -ne $Aud) {
                 New-CustomExceptionGenerator -AudienceValidationFailed
             }
 
-            if ($Decodedtoken.TokenPayload.azpacr -ne $azpacr) {
-                New-CustomExceptionGenerator -AzpacrValidationFailed
-            }
-
             if ($Decodedtoken.TokenPayload.azp -ne $azp) {
                 New-CustomExceptionGenerator -AzpValidationFailed
-            }
-
-            if ($Decodedtoken.TokenPayload.ver -ne $ver) {
-                New-CustomExceptionGenerator -VersionValidationFailed
             }
         }
         catch [TokenUnusableException]{
