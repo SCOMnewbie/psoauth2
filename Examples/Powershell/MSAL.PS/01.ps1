@@ -30,7 +30,7 @@ Correlation ID: 84530d16-978f-4dbe-ba9a-a77349cf6f01
 Timestamp: 2021-06-03 11:09:16Z
 #>
 
-$secret = ConvertTo-SecureString -String "WUiUaO9n6V6h_0-Vi" -AsPlainText -Force
+$secret = ConvertTo-SecureString -String "WUiUa9n6V6h_0-Vi" -AsPlainText -Force
 Get-MsalToken -ClientId "58d23568-b24e-4cf7-ab30-4436c2725a8a" -ClientSecret $secret -TenantId $TenantId # Force client cred flow (./default)
 
 

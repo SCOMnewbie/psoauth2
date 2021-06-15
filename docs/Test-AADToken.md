@@ -13,8 +13,7 @@ This function will verify the token we provide is valid according to our criteri
 ## SYNTAX
 
 ```
-Test-AADToken [-AccessToken] <String> [-Aud] <String> [-azp] <String> [[-ver] <String>] [[-azpacr] <Int32>]
- [<CommonParameters>]
+Test-AADToken [-AccessToken] <String> [-Aud] <String> [-azp] <String> [[-ver] <String>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -92,22 +91,6 @@ Aliases:
 Required: False
 Position: 4
 Default value: 2.0
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -azpacr
-Specify the azpacr of the request.
-By default it's 0 for the demo.
-
-```yaml
-Type: Int32
-Parameter Sets: (All)
-Aliases:
-
-Required: False
-Position: 5
-Default value: 0
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

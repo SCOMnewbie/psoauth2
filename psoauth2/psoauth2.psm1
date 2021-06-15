@@ -982,12 +982,26 @@ Function Clear-TokenCache {
 }
 
 function ConvertFrom-Jwt {
-
     <#
+    .SYNOPSIS
+    This function will decode a base64 JWT token.
+    .DESCRIPTION
     Big thank you to both Darren Robinson (https://github.com/darrenjrobinson/JWTDetails/blob/master/JWTDetails/1.0.0/JWTDetails.psm1) and
     Mehrdad Mirreza in the comment of the blog post (https://www.michev.info/Blog/Post/2140/decode-jwt-access-and-id-tokens-via-powershell)
     I've used both article for inspiration because:
     Darren does not have header wich is a mandatory peace according to me and Mehrdad does not have signature which is also a mandatory piece.
+    .PARAMETER Token
+        Specify the access token you want to decode
+    .EXAMPLE
+    PS> ConvertFrom-Jwt -Token "ey...."
+    
+    "will decode the token"
+    .NOTES
+    VERSION HISTORY
+    1.0 | 2021/07/06 | Francois LEON
+        initial version
+    POSSIBLE IMPROVEMENT
+        -
     #>
     [cmdletbinding()]
     param(
@@ -998,6 +1012,7 @@ function ConvertFrom-Jwt {
     Write-Verbose 'ConvertFrom-Jwt - Begin function'
 
     $ErrorActionPreference = 'Stop'
+    $Token = $Token.Replace('Bearer ','')
 
     try {
 
@@ -1086,8 +1101,23 @@ Function New-AccessToken {
             $Splatting = @{
                 Resource     = $ClientId
                 TenantId     = $TenantId
-                Scope        = 'https://graph.microsoft.com/.default openid offline_access'
+                Scope        = 'https://graph.microsoft.com/User.Read openid offline_access'
                 RedirectUri  = 'https://login.microsoftonline.com/common/oauth2/nativeclient'
+                AuthCodeFlow = $true
+                verbose      = $true
+            }
+        
+        "will authenticate using the auth code flow."
+        .EXAMPLE
+        PS> $ClientId = 'd3537907-7a6f-54be-8a83-601d70feec72'
+            $TenantId = 'e192cada-b64d-4cfc-8b90-d14338b2c7ec'
+
+            $Splatting = @{
+                Resource     = $ClientId
+                TenantId     = $TenantId
+                Scope        = 'https://graph.microsoft.com/User.Read openid offline_access'
+                RedirectUri  = 'https://login.microsoftonline.com/common/oauth2/nativeclient'
+                Secret       = 'mysecret'
                 AuthCodeFlow = $true
                 verbose      = $true
             }
@@ -1102,12 +1132,39 @@ Function New-AccessToken {
                 TenantId     = $TenantId
                 Scope        = 'https://graph.microsoft.com/.default openid offline_access'
                 RedirectUri  = 'https://login.microsoftonline.com/common/oauth2/nativeclient'
-                Secret       = 'mysecret'
                 AuthCodeFlow = $true
+                WithoutCache = $true
                 verbose      = $true
             }
         
-        "will authenticate using the auth code flow."
+        "will authenticate using the auth code flow without generating cache."
+        .EXAMPLE
+        PS> $ClientId = 'd3537907-7a6f-54be-8a83-601d70feec72'
+            $TenantId = 'e192cada-b64d-4cfc-8b90-d14338b2c7ec'
+
+            $Splatting = @{
+                Resource     = $ClientId
+                TenantId     = $TenantId
+                Scope        = 'https://graph.microsoft.com/.default openid offline_access'
+                RedirectUri  = 'http://localhost'
+                $DeviceCodeFlow = $true
+                verbose      = $false
+            }
+        
+        "will authenticate using the device code flow."
+        .EXAMPLE
+        PS> $ClientId = 'd3537907-7a6f-54be-8a83-601d70feec72'
+            $TenantId = 'e192cada-b64d-4cfc-8b90-d14338b2c7ec'
+
+            $Splatting = @{
+                Resource     = $ClientId
+                TenantId     = $TenantId
+                Scope        = 'https://graph.microsoft.com/.default openid offline_access'
+                ClientCredentialFlow = $true
+                verbose      = $true
+            }
+        
+        "will authenticate using the credential code flow for server to server communication"
         .NOTES
         VERSION HISTORY
         1.0 | 2021/05/05 | Francois LEON
@@ -1531,19 +1588,122 @@ Function New-AccessToken {
     }
 }
 
-
-<#
-A Big thank you to Alex Asplund (https://adamtheautomator.com/powershell-graph-api/) who did the hardwork regarding certificate auth. I've copy/paste all his work.
-#>
-function New-AzureFunctionClientCredential {
+function New-APIOnBehalfToken {
+    <#
+    .SYNOPSIS
+    This function will try an On Behalf Of (server to server with incoming user access token > generate delegated access token).
+    .DESCRIPTION
+    This function will try an On Behalf Of (server to server with incoming user access token > generate delegated access token). This function is not added
+    to new-accesstoken because I start to be tired and because it's not a end user function. You should use it from backend api only.
+    .PARAMETER ClientId
+        Specify the clientId of your application
+    .PARAMETER TenantId
+    Specify the TenantId of your application
+    .PARAMETER Scope
+    Specify the scope the intermediate request will request. By default ./default on Graph
+    .PARAMETER Secret
+    Specify the secret of your backend appId to do the request
+    .PARAMETER Assertion
+    Specify the access token of the incoming request.
+    .EXAMPLE
+    PS> $Splating @{
+        ClientId = "<your backend appId>"
+        TenantId = "<your TenantId>"
+        Secret = <Generated app secret>
+        Assertion = <caller access token>
+    }
+    
+    New-APIOnBehalfToken @splating
+    
+    "will generate a delegated access token"
+    .NOTES
+    VERSION HISTORY
+    1.0 | 2021/07/06 | Francois LEON
+        initial version
+    POSSIBLE IMPROVEMENT
+        - Add certificate
+    #>
     [cmdletbinding()]
     param(
         [Parameter(Mandatory = $true)]
         [guid]$ClientId,
         [Parameter(Mandatory = $true)]
         [guid]$TenantId,
+        [Parameter(Mandatory = $false)]
+        [string]$Scope = "https://graph.microsoft.com/.default",
+        [parameter(Mandatory = $true, ParameterSetName = 'Secret')]
+        [string]$Secret,
+        [string]$Assertion # Access token received from the caller
+    )
+
+    Write-Verbose "New-APIOnBehalfToken - Begin function"
+
+    # Force TLS 1.2.
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+   
+    $headers = @{
+        'Content-Type' = 'application/x-www-form-urlencoded'
+    }
+
+    $Url = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+    
+    $Params = @{
+        Headers = $headers
+        uri     = $Url
+        Body    = $null
+        method  = 'Post'
+    }
+
+    $BodyPayload = @{
+        grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+        assertion = $Assertion
+        requested_token_use = "on_behalf_of"
+        client_id = $ClientID
+        scope = $Scope
+        client_secret = $secret
+    }
+
+    $Params.Body = $BodyPayload
+
+    Write-Verbose 'New-APIOnBehalfToken - End function'
+
+    Invoke-RestMethod @Params
+}
+
+function New-APIServerToServerToken {
+    <#
+    .SYNOPSIS
+    This function is the same as the one in new-AccessToken without trying to write on disk caching.
+    .DESCRIPTION
+    This function is the same as the one in new-AccessToken without trying to write on disk caching. Just a copy paste because this POC start to take too long...
+    .PARAMETER ClientId
+        Specify the clientId
+    .PARAMETER TenantId
+        Specify the TenantId
+    .PARAMETER Scope
+    Specify the scope. Should always be ./default with this flow.
+    .PARAMETER Secret
+    Specify the secret
+     .PARAMETER CertificatePath
+    Specify the CertificatePath
+    .EXAMPLE
+    PS> New-APIServerToServerToken -ClientId $ClientId -TenantId $TenantId -Secret 'secret'
+    
+    "will request a server to server access token"
+    .NOTES
+    VERSION HISTORY
+    1.0 | 2021/07/06 | Francois LEON
+        initial version
+    POSSIBLE IMPROVEMENT
+        -
+    #>
+    [cmdletbinding()]
+    param(
         [Parameter(Mandatory = $true)]
-        [string]$Scope,
+        [guid]$ClientId,
+        [Parameter(Mandatory = $true)]
+        [guid]$TenantId,
+        [string]$Scope = "https://graph.microsoft.com/.default",
         [parameter(Mandatory = $true, ParameterSetName = 'Secret')]
         [string]$Secret,
         [parameter(Mandatory = $true, ParameterSetName = 'Certificate')]
@@ -1812,6 +1972,8 @@ function Test-AADToken {
 
     begin{
         $ErrorActionPreference = 'Stop'
+        # To avoid issue when we activate Azure func auth
+        $AccessToken = $AccessToken.Replace('Bearer ','')
     }
 
     process{
@@ -1870,4 +2032,4 @@ function Test-AADToken {
     }
 }
 
-Export-ModuleMember -Function 'Clear-TokenCache', 'ConvertFrom-Jwt', 'New-AccessToken', 'New-AzureFunctionClientCredential', 'Revoke-RefreshTokens', 'Test-AADToken'
+Export-ModuleMember -Function 'Clear-TokenCache', 'ConvertFrom-Jwt', 'New-AccessToken', 'New-APIOnBehalfToken', 'New-APIServerToServerToken', 'Revoke-RefreshTokens', 'Test-AADToken'

@@ -37,6 +37,8 @@
 
     begin{
         $ErrorActionPreference = 'Stop'
+        # To avoid issue when we activate Azure func auth
+        $AccessToken = $AccessToken.Replace('Bearer ','')
     }
 
     process{

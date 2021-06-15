@@ -1,23 +1,49 @@
 ﻿function New-APIOnBehalfToken {
+    <#
+    .SYNOPSIS
+    This function will try an On Behalf Of (server to server with incoming user access token > generate delegated access token).
+    .DESCRIPTION
+    This function will try an On Behalf Of (server to server with incoming user access token > generate delegated access token). This function is not added
+    to new-accesstoken because I start to be tired and because it's not a end user function. You should use it from backend api only.
+    .PARAMETER ClientId
+        Specify the clientId of your application
+    .PARAMETER TenantId
+    Specify the TenantId of your application
+    .PARAMETER Scope
+    Specify the scope the intermediate request will request. By default ./default on Graph
+    .PARAMETER Secret
+    Specify the secret of your backend appId to do the request
+    .PARAMETER Assertion
+    Specify the access token of the incoming request.
+    .EXAMPLE
+    PS> $Splating @{
+        ClientId = "<your backend appId>"
+        TenantId = "<your TenantId>"
+        Secret = <Generated app secret>
+        Assertion = <caller access token>
+    }
+    
+    New-APIOnBehalfToken @splating
+    
+    "will generate a delegated access token"
+    .NOTES
+    VERSION HISTORY
+    1.0 | 2021/07/06 | Francois LEON
+        initial version
+    POSSIBLE IMPROVEMENT
+        - Add certificate
+    #>
     [cmdletbinding()]
     param(
         [Parameter(Mandatory = $true)]
         [guid]$ClientId,
         [Parameter(Mandatory = $true)]
         [guid]$TenantId,
-        [Parameter(Mandatory = $true)]
-        [string]$Scope,
+        [Parameter(Mandatory = $false)]
+        [string]$Scope = "https://graph.microsoft.com/.default",
         [parameter(Mandatory = $true, ParameterSetName = 'Secret')]
         [string]$Secret,
-        [parameter(Mandatory = $true, ParameterSetName = 'Certificate')]
-        [ValidateScript( {
-                if ( -Not ($_ | Test-Path) ) {
-                    throw 'Certificate does not exist'
-                }
-                return $true
-            })]
-        $CertificatePath,  # Should be under the form "Cert:\CurrentUser\My\<cert thumbprint>"
-        [string]$Assertion # Access toekn received from the caller
+        [string]$Assertion # Access token received from the caller
     )
 
     Write-Verbose "New-APIOnBehalfToken - Begin function"
@@ -25,23 +51,11 @@
     # Force TLS 1.2.
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
    
-    #$Assertion = $Assertion.replace("Bearer ","") # Just in case
-    #$Assertion = [System.Web.HttpUtility]::UrlEncode($Assertion)
-    #$Scope = [System.Web.HttpUtility]::UrlEncode($Scope)
-
     $headers = @{
         'Content-Type' = 'application/x-www-form-urlencoded'
     }
 
-    #TO DO Decotek token received to eventually drop it
-
-    if($secret){
-        $Url = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
-    }
-    else{
-        #Certificate path
-        Write-Error "Not managed yet"
-    }
+    $Url = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
     
     $Params = @{
         Headers = $headers
@@ -65,11 +79,3 @@
 
     Invoke-RestMethod @Params
 }
-
-$ClientId = "825388eb-37d5-4b0d-8e09-05ab16c52492"
-$TenantId = '9fc48040-bd8c-4f3f-b7b3-ff17cbf04b20'
-$Password = "o~0-wQ8w_ppCN8z"
-$Scope = "https://graph.microsoft.com/.default"
-$Assertion = "eyJ0ey00ZjNmLMcExmcFVnMjetLhs7yhkIA"
-
-$OBOToken = New-APIOnBehalfToken -TenantId $TenantId -Scope $Scope -Secret $Password -Assertion $Assertion -ClientId $ClientId

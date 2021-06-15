@@ -1,10 +1,24 @@
 ﻿function ConvertFrom-Jwt {
-
     <#
+    .SYNOPSIS
+    This function will decode a base64 JWT token.
+    .DESCRIPTION
     Big thank you to both Darren Robinson (https://github.com/darrenjrobinson/JWTDetails/blob/master/JWTDetails/1.0.0/JWTDetails.psm1) and
     Mehrdad Mirreza in the comment of the blog post (https://www.michev.info/Blog/Post/2140/decode-jwt-access-and-id-tokens-via-powershell)
     I've used both article for inspiration because:
     Darren does not have header wich is a mandatory peace according to me and Mehrdad does not have signature which is also a mandatory piece.
+    .PARAMETER Token
+        Specify the access token you want to decode
+    .EXAMPLE
+    PS> ConvertFrom-Jwt -Token "ey...."
+    
+    "will decode the token"
+    .NOTES
+    VERSION HISTORY
+    1.0 | 2021/07/06 | Francois LEON
+        initial version
+    POSSIBLE IMPROVEMENT
+        -
     #>
     [cmdletbinding()]
     param(
@@ -15,6 +29,7 @@
     Write-Verbose 'ConvertFrom-Jwt - Begin function'
 
     $ErrorActionPreference = 'Stop'
+    $Token = $Token.Replace('Bearer ','')
 
     try {
 

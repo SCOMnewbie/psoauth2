@@ -56,7 +56,7 @@ $ClientId = 'd3537907-7a6f-54be-8a83-601d70feec72'
 $Splatting = @{
         Resource     = $ClientId
         TenantId     = $TenantId
-        Scope        = 'https://graph.microsoft.com/.default openid offline_access'
+        Scope        = 'https://graph.microsoft.com/User.Read openid offline_access'
         RedirectUri  = 'https://login.microsoftonline.com/common/oauth2/nativeclient'
         AuthCodeFlow = $true
         verbose      = $true
@@ -73,7 +73,7 @@ $ClientId = 'd3537907-7a6f-54be-8a83-601d70feec72'
 $Splatting = @{
         Resource     = $ClientId
         TenantId     = $TenantId
-        Scope        = 'https://graph.microsoft.com/.default openid offline_access'
+        Scope        = 'https://graph.microsoft.com/User.Read openid offline_access'
         RedirectUri  = 'https://login.microsoftonline.com/common/oauth2/nativeclient'
         Secret       = 'mysecret'
         AuthCodeFlow = $true
@@ -81,6 +81,57 @@ $Splatting = @{
     }
 
 "will authenticate using the auth code flow."
+
+### EXAMPLE 3
+```
+$ClientId = 'd3537907-7a6f-54be-8a83-601d70feec72'
+    $TenantId = 'e192cada-b64d-4cfc-8b90-d14338b2c7ec'
+```
+
+$Splatting = @{
+        Resource     = $ClientId
+        TenantId     = $TenantId
+        Scope        = 'https://graph.microsoft.com/.default openid offline_access'
+        RedirectUri  = 'https://login.microsoftonline.com/common/oauth2/nativeclient'
+        AuthCodeFlow = $true
+        WithoutCache = $true
+        verbose      = $true
+    }
+
+"will authenticate using the auth code flow without generating cache."
+
+### EXAMPLE 4
+```
+$ClientId = 'd3537907-7a6f-54be-8a83-601d70feec72'
+    $TenantId = 'e192cada-b64d-4cfc-8b90-d14338b2c7ec'
+```
+
+$Splatting = @{
+        Resource     = $ClientId
+        TenantId     = $TenantId
+        Scope        = 'https://graph.microsoft.com/.default openid offline_access'
+        RedirectUri  = 'http://localhost'
+        $DeviceCodeFlow = $true
+        verbose      = $false
+    }
+
+"will authenticate using the device code flow."
+
+### EXAMPLE 5
+```
+$ClientId = 'd3537907-7a6f-54be-8a83-601d70feec72'
+    $TenantId = 'e192cada-b64d-4cfc-8b90-d14338b2c7ec'
+```
+
+$Splatting = @{
+        Resource     = $ClientId
+        TenantId     = $TenantId
+        Scope        = 'https://graph.microsoft.com/.default openid offline_access'
+        ClientCredentialFlow = $true
+        verbose      = $true
+    }
+
+"will authenticate using the credential code flow for server to server communication"
 
 ## PARAMETERS
 

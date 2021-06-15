@@ -175,7 +175,7 @@ foreach ($App in $Apps) {
                                 type = 'Scope'
                             },
                             @{
-                                id   = $(Get-APIScopesInfo -AccessToken $token -Deleguated -ScopeKeyword 'profile' | Where-Object value -NE 'OnPremisesPublishingProfiles.ReadWrite.All' | ForEach-Object id) # delegated profile permission Id. And yes 2 API has the word profile so I have to escape the wrong one.
+                                id   = $(Get-APIScopesInfo -AccessToken $token -Deleguated -ScopeKeyword 'profile' | Where-Object value -ne 'OnPremisesPublishingProfiles.ReadWrite.All' | ForEach-Object id) # delegated profile permission Id. And yes 2 API has the word profile so I have to escape the wrong one.
                                 type = 'Scope'
                             }
                         )

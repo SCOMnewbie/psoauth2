@@ -1,16 +1,37 @@
-﻿
-<#
-A Big thank you to Alex Asplund (https://adamtheautomator.com/powershell-graph-api/) who did the hardwork regarding certificate auth. I've copy/paste all his work.
-#>
-function New-APIServerToServerToken {
+﻿function New-APIServerToServerToken {
+    <#
+    .SYNOPSIS
+    This function is the same as the one in new-AccessToken without trying to write on disk caching.
+    .DESCRIPTION
+    This function is the same as the one in new-AccessToken without trying to write on disk caching. Just a copy paste because this POC start to take too long...
+    .PARAMETER ClientId
+        Specify the clientId
+    .PARAMETER TenantId
+        Specify the TenantId
+    .PARAMETER Scope
+    Specify the scope. Should always be ./default with this flow.
+    .PARAMETER Secret
+    Specify the secret
+     .PARAMETER CertificatePath
+    Specify the CertificatePath
+    .EXAMPLE
+    PS> New-APIServerToServerToken -ClientId $ClientId -TenantId $TenantId -Secret 'secret'
+    
+    "will request a server to server access token"
+    .NOTES
+    VERSION HISTORY
+    1.0 | 2021/07/06 | Francois LEON
+        initial version
+    POSSIBLE IMPROVEMENT
+        -
+    #>
     [cmdletbinding()]
     param(
         [Parameter(Mandatory = $true)]
         [guid]$ClientId,
         [Parameter(Mandatory = $true)]
         [guid]$TenantId,
-        [Parameter(Mandatory = $true)]
-        [string]$Scope,
+        [string]$Scope = "https://graph.microsoft.com/.default",
         [parameter(Mandatory = $true, ParameterSetName = 'Secret')]
         [string]$Secret,
         [parameter(Mandatory = $true, ParameterSetName = 'Certificate')]
