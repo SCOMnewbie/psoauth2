@@ -28,6 +28,11 @@ class TokenAzpValidationFailedException : System.Exception {
     }
 }
 
+class TokenIssValidationFailedException : System.Exception {
+    TokenIssValidationFailedException ([string] $Message) : base($Message){
+    }
+}
+
 class TokenUnusableException : System.Exception {
     TokenUnusableException ([string] $Message) : base($Message){
     }

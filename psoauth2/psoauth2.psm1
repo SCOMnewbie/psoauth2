@@ -29,6 +29,11 @@ class TokenAzpValidationFailedException : System.Exception {
     }
 }
 
+class TokenIssValidationFailedException : System.Exception {
+    TokenIssValidationFailedException ([string] $Message) : base($Message){
+    }
+}
+
 class TokenUnusableException : System.Exception {
     TokenUnusableException ([string] $Message) : base($Message){
     }
@@ -546,6 +551,8 @@ function New-CustomExceptionGenerator {
         [switch]$AzpacrValidationFailed,
         [Parameter(Mandatory=$true,ParameterSetName='AzpValidationFailed')]
         [switch]$AzpValidationFailed,
+        [Parameter(Mandatory=$true,ParameterSetName='IssuerFailed')]
+        [switch]$IssuerValidationFailed,
         [Parameter(Mandatory=$true,ParameterSetName='TokenUnusable')]
         [switch]$TokenUnusable
     )
@@ -575,6 +582,10 @@ function New-CustomExceptionGenerator {
         }
         'AzpValidationFailed'{
             $MyError = [TokenAzpValidationFailedException]::new('Token provided are not sent by a trusted application')
+            break
+        }
+        'IssuerValidationFailed'{
+            $MyError = [TokenIssValidationFailedException]::new('Token issuer is not valid')
             break
         }
         'TokenUnusable'{
@@ -1944,6 +1955,8 @@ function Test-AADToken {
     Specify the audience of the request like https://graph.microsoft.com/ or api://myapi
     .PARAMETER Azp
     Specify the azp of the request. In our case, the clientId from where the request has been sent (desktop app).
+    .PARAMETER Iss
+    Specify the issuer authorized by your application.
     .PARAMETER Azpacr
     Specify the azpacr of the request. By default it's 0 for the demo.
     .PARAMETER Ver
@@ -1966,7 +1979,8 @@ function Test-AADToken {
     param(
         [Parameter(Mandatory = $true)][String]$AccessToken,
         [Parameter(Mandatory = $true)][String]$Aud,
-        [Parameter(Mandatory = $true)][String]$azp,
+        [String[]]$azp,
+        [String[]]$iss,
         [String]$ver = '2.0'
     )
 
@@ -2017,8 +2031,18 @@ function Test-AADToken {
                 New-CustomExceptionGenerator -AudienceValidationFailed
             }
 
-            if ($Decodedtoken.TokenPayload.azp -ne $azp) {
-                New-CustomExceptionGenerator -AzpValidationFailed
+            # Can authorize several authorized client
+            If ($PSBoundParameters.ContainsKey('azp')) {
+                if ($Decodedtoken.TokenPayload.azp -notin $azp) {
+                    New-CustomExceptionGenerator -AzpValidationFailed
+                }
+            }
+
+            # Can authorize several issuer
+            If ($PSBoundParameters.ContainsKey('iss')) {
+                if ($Decodedtoken.TokenPayload.iss -notin $iss) {
+                    New-CustomExceptionGenerator -IssuerValidationFailed
+                }
             }
         }
         catch [TokenUnusableException]{

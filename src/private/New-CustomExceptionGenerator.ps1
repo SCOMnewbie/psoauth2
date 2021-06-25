@@ -12,6 +12,8 @@
         [switch]$AzpacrValidationFailed,
         [Parameter(Mandatory=$true,ParameterSetName='AzpValidationFailed')]
         [switch]$AzpValidationFailed,
+        [Parameter(Mandatory=$true,ParameterSetName='IssuerFailed')]
+        [switch]$IssuerValidationFailed,
         [Parameter(Mandatory=$true,ParameterSetName='TokenUnusable')]
         [switch]$TokenUnusable
     )
@@ -41,6 +43,10 @@
         }
         'AzpValidationFailed'{
             $MyError = [TokenAzpValidationFailedException]::new('Token provided are not sent by a trusted application')
+            break
+        }
+        'IssuerValidationFailed'{
+            $MyError = [TokenIssValidationFailedException]::new('Token issuer is not valid')
             break
         }
         'TokenUnusable'{
